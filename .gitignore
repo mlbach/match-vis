@@ -1,0 +1,3 @@
+# ignore all created video files
+videos/*
+data/*
