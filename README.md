@@ -3,9 +3,9 @@ Use Python to create simple animated visualizations of football matches from pos
 
 ## Requirements
 This script was tested on a machine with
-Python == 3.7
-Numpy == 1.16
-OpenCV == 3.4.1
+- Python == 3.7
+- Numpy == 1.16
+- OpenCV == 3.4.1
 
 ## How to use
 Clone the repository, make sure all requirements are installed and run
