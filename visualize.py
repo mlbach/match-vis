@@ -32,9 +32,17 @@ def draw_clock(img, elapsed_time, position=(50, 50)):
                 (tlx + 5, tly + 33), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 2)
                 
 
-def visualize(blank_image, ts, filename, save_video, vid_fps):
-
-
+def visualize(blank_image, ts, filename, save_video, vid_fps, player_focus):
+    
+    if opt.player_focus != None:
+        focus_image = np.zeros((40 * 10 + 25, 20 * 10 + 25, 3), np.uint8) #construct second image for player focus, dimensions rotated
+        focus_image[:, :, 1] = 204
+        
+        cv2.putText(focus_image, "Focus on player "+player_focus, (10, 10), cv2.FONT_HERSHEY_PLAIN, 1, (0,0,0), 1)
+        
+        cv2.rectangle(focus_image, (12, 12), 
+        (focus_image.shape[1] - 13, focus_image.shape[0] - 13), (250,250,250))
+        
     if save_video:
         vid_path, vid_writer = None, None
         
@@ -77,6 +85,10 @@ def visualize(blank_image, ts, filename, save_video, vid_fps):
             if type == "player":
                 cv2.circle(base_img, (y_t, x_t),13, (250, 0, 0), -1)
                 cv2.putText(base_img, number, (y_t - 10, x_t + 5), cv2.FONT_HERSHEY_PLAIN, 1, (250,250,250), 2)
+                
+                if ts[x][obj][1] == player_focus:
+                    cv2.circle(focus_image, (int(x_t/2), int(y_t/2)), 1, (250, 0, 0), 1)
+                
             else:
                 cv2.circle(base_img, (y_t, x_t),8, (250, 250, 250), -1) #ball
                 
@@ -84,7 +96,8 @@ def visualize(blank_image, ts, filename, save_video, vid_fps):
             vid_writer.write(base_img)
         else:
             cv2.imshow('image', base_img)
-            cv2.imshow('focus', base_img)
+            if player_focus != None:
+                cv2.imshow('focus', focus_image)
             if x == len(ts)-1:
                 cv2.waitKey(0)
             else:
@@ -172,7 +185,6 @@ if __name__ == '__main__':
             vid_fps = None
         
         
-
         scf = 10 * 2
         offset_y = 200
         offset_x = 50
@@ -190,9 +202,10 @@ if __name__ == '__main__':
         cv2.rectangle(blank_image, (border_left, border_top), 
         (w - border_left, h - border_top), (250,250,250))
         
+        
         displaytime_start = datetime.now()
         
-        visualize(blank_image, ts, file, opt.save_video, vid_fps) #display animation
+        visualize(blank_image, ts, file, opt.save_video, vid_fps, opt.player_focus) #display animation
         
         displaytime_stop = datetime.now()
         displaytime_duration = displaytime_stop - displaytime_start
