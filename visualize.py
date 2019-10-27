@@ -31,6 +31,55 @@ def draw_clock(img, visual_params, elapsed_time, position=(50, 50)):
     cv2.putText(img, elapsed_time, 
                 (tlx + 5, tly + 33), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 2)
                 
+def draw_clock_scoreboard(img, score, visual_params, elapsed_time, position=(50, 50)):
+
+    tlx = position[0] # top left position, x-axis
+    tly = position[1] # top left position y-axis
+
+    scoreboard_width = 60
+    
+    tlx_this = tlx
+    tlx_next = tlx_this + 20
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (250,0,0), -1) #filled blue box
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (0, 0, 0)) #black border
+    
+    tlx_this = tlx_next
+    tlx_next = tlx_this + 140
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (211,211,211), -1) #filled white box
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (0, 0, 0)) #black border
+    cv2.putText(img, "Team L", 
+                (tlx_this + 5, tly + 33), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 2)
+    
+    tlx_this = tlx_next
+    tlx_next = tlx_this + 60
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (250,250,250), -1) #filled white box
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (0, 0, 0)) #black border
+    
+    cv2.putText(img, str(score[0])+":"+str(score[1]), 
+                (tlx_this + 5, tly + 33), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 2)
+    
+    tlx_this = tlx_next
+    tlx_next = tlx_this + 140
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (211,211,211), -1) #filled white box
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (0, 0, 0)) #black border
+    
+    cv2.putText(img, "Team R", 
+                (tlx_this + 5, tly + 33), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 2)
+                
+    tlx_this = tlx_next
+    tlx_next = tlx_this + 20
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (250,0,0), -1) #filled blue box
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (0, 0, 0)) #black border
+    
+    
+    tlx_this = tlx_next
+    tlx_next = tlx_this + 100            
+
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (79,79,47), -1) #filled white box
+    cv2.rectangle(img, (tlx_this, tly), (tlx_next, tly + 40), (0, 0, 0)) #black border
+    
+    cv2.putText(img, elapsed_time, 
+                (tlx_this + 5, tly + 33), cv2.FONT_HERSHEY_SIMPLEX, 1, (250,250,250), 2)
 
 def visualize(blank_image, ts, filename, visual_params, player_focus):
     padding_x = visual_params["offset_x"] * visual_params["magnitude"]
@@ -41,6 +90,9 @@ def visualize(blank_image, ts, filename, visual_params, player_focus):
     
     h = 20 * visual_params["magnitude"] * visual_params["scf"] + padding_y #height
     w = 40 * visual_params["magnitude"] * visual_params["scf"] + padding_x #width 40 * 10 * 2
+    
+    in_goal = False
+    score = np.array([0, 0], np.uint8)
     
     if opt.player_focus != None:
         focus_pitch = construct_focus_pitch(player_focus, visual_params)
@@ -67,11 +119,11 @@ def visualize(blank_image, ts, filename, visual_params, player_focus):
     
     starttime = datetime.strptime(ts[0][1], '%d %B %Y %H:%M:%S.%f')
     
-    for x in range(0, len(ts)):
+    for x in range(1500, len(ts)):
         base_img = blank_image.copy()
         now = datetime.strptime(ts[x][1], '%d %B %Y %H:%M:%S.%f')
     
-        draw_clock(base_img, visual_params, get_elapsed_time(starttime, now), (int(round(w/2, 0)) - 50,25))
+        draw_clock_scoreboard(base_img, score, visual_params, get_elapsed_time(starttime, now), (int(round(w/2, 0)) - 50,25))
         
         for obj in range(2, len(ts[x])):
             
@@ -96,6 +148,7 @@ def visualize(blank_image, ts, filename, visual_params, player_focus):
                 
             else:
                 cv2.circle(base_img, (y_t, x_t),8, (250, 250, 250), -1) #ball
+                in_goal, score = check_goal((y_t, x_t), in_goal, score)
                 
         if visual_params["save_video"]:
             vid_writer.write(base_img)
@@ -120,6 +173,19 @@ def get_elapsed_time(starttime, now):
     seconds = divmod(minutes[1], 1)               # Use remainder of minutes to calc seconds
     return "%02d:%02d" % (minutes[0], seconds[0])
  
+def check_goal(ball_coords, in_goal, score):
+    
+    if in_goal:
+        if goal_coords[0, 2] < ball_coords[0] < goal_coords[1, 0]:
+            in_goal = False #ball again in field of play
+    else:
+        for i in range(2):
+            if (goal_coords[i, 0] < ball_coords[0] < goal_coords[i, 2]) and (goal_coords[i, 1] < ball_coords[1] < goal_coords[i, 3]):
+                
+                in_goal = True
+                score[i] += 1        
+    
+    return in_goal, score
 
 def get_filenames(example_filename):
 
@@ -150,26 +216,55 @@ def construct_pitch(params):
     border_left = int(round(padding_x/2, 0))
 
     # bild dimensionen
-    h = 20 * params["magnitude"] * params["scf"] + padding_y #height
-    w = 40 * params["magnitude"] * params["scf"] + padding_x #width 40 * 10 * 2
+    h = int(20 * params["magnitude"] * params["scf"] + padding_y) #height
+    w = int(40 * params["magnitude"] * params["scf"] + padding_x) #width 40 * 10 * 2
 
     blank_image = np.zeros((h, w, 3), np.uint8)
     blank_image[:, :, 1 ] = 204 #0, 204, 0 #rgb
 
-    #spielfelddimensionen
+    
+    #add 5m x 2m goals
+    post_to_corner = border_top + int(round((20 - 5)/2 * params["magnitude"] * params["scf"], 0))
+    leftgoal_tlx = int(border_left -  2 * params["magnitude"] * params["scf"])
+    post_to_post = post_to_corner + int(round(5 * params["magnitude"] * params["scf"],0))
+    
+    rightgoal_tlx = w - border_left
+    rightgoal_brx = int(w - border_left +  2 * params["magnitude"] * params["scf"])
+    
+    global goal_coords
+    goal_coords = np.array([
+        [leftgoal_tlx, post_to_corner, border_left, post_to_post],
+        [rightgoal_tlx, post_to_corner, rightgoal_brx, post_to_post]], np.uint16) #left goal, right goal: tly, tlx, bry, brx
+    
+    cv2.rectangle(blank_image, (leftgoal_tlx, post_to_corner), 
+        (border_left, post_to_post), (0, 0, 0)) # left goal
+    
+    cv2.rectangle(blank_image, (rightgoal_tlx, post_to_corner), 
+        (rightgoal_brx, post_to_post), (0, 0, 0)) # right goal
+
+    #pitch border
     cv2.rectangle(blank_image, (border_left, border_top), 
-    (w - border_left, h - border_top), (250,250,250))
+    (w - border_left, h - border_top), (250,250,250))    
     
     return blank_image
 
 def construct_focus_pitch(focus, params):
-        focus_image = np.zeros((40 * 10 + 25, 20 * 10 + 25, 3), np.uint8) #construct second image for player focus, dimensions rotated
-        focus_image[:, :, 1] = 204
-        
-        cv2.rectangle(focus_image, (12, 12), 
-        (focus_image.shape[1] - 13, focus_image.shape[0] - 13), (250,250,250))
-        
-        return focus_image
+    padding_x = (params["offset_x"]/2) * params["magnitude"] # focus pith only half the size
+    padding_y = (params["offset_x"]/2) * params["magnitude"] #use equal padding
+    
+    border_top = int(round(padding_y/2, 0))
+    border_left = int(round(padding_x/2, 0))    
+
+    w = int(round(20 * params["magnitude"] * (params["scf"]/2) + padding_y, 0)) # dimensions switched from regular pitch
+    h = int(round(40 * params["magnitude"] * (params["scf"]/2) + padding_x, 0)) 
+    
+    focus_image = np.zeros((h, w, 3), np.uint8) #construct second image for player focus, dimensions rotated
+    focus_image[:, :, 1] = 204
+    
+    cv2.rectangle(focus_image, (border_top, border_top), 
+    (focus_image.shape[1] - border_top, focus_image.shape[0] - border_top), (250,250,250))
+    
+    return focus_image
 
 def calc_duration(datetime_start, datetime_stop):
     duration = datetime_start - datetime_stop                        # For build-in functions
@@ -206,8 +301,6 @@ if __name__ == '__main__':
             for line in f:
                 ts.append(split_convert_line(line))
 
-        #print(len(ts))
-        print(ts[:5])
         
         #calculate actual match duration
         min, sec = calc_duration(datetime.strptime(ts[-1][1], '%d %B %Y %H:%M:%S.%f'), datetime.strptime(ts[0][1], '%d %B %Y %H:%M:%S.%f')) #datetime from first, last timesteps
@@ -217,9 +310,9 @@ if __name__ == '__main__':
             "pitch_height" : 20,
             "pitch_width" : 40,
             "magnitude" : 10,
-            "scf" : 2, #scaling factor
+            "scf" : 2.5, #scaling factor
             "offset_y" : 20,
-            "offset_x" : 5,
+            "offset_x" : 15,
             "save_video" : opt.save_video,
             "vid_fps" : None
         }
